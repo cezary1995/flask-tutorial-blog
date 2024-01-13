@@ -10,8 +10,8 @@ from flaskr.db import get_db
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
-valid_email = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
-valid_pswd = r'^.{3,}$'
+pattern_email = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+pattern_pswd = r'^.{3,}$'
 
 
 @bp.route('/register', methods=('GET', 'POST'))
@@ -35,9 +35,9 @@ def register():
             error = 'Password is required.'
 
         # Check if email and password match the pattern
-        if not check_if_match_pattern(valid_email, email):
+        if not check_if_match_pattern(pattern_email, email):
             error = "Invalid email."
-        elif not check_if_match_pattern(valid_pswd, password):
+        elif not check_if_match_pattern(pattern_pswd, password):
             error = "Invalid password."
 
         if error is None:
@@ -65,16 +65,16 @@ def register():
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
     if request.method == 'POST':
-        username = request.form['username']
+        email = request.form['email']
         password = request.form['password']
         db = get_db()
         error = None
         user = db.execute(
-            'SELECT * FROM user WHERE username = ?', (username,)
+            'SELECT * FROM user WHERE email = ?', (email,)
         ).fetchone()
 
         if user is None:
-            error = 'Incorrect username.'
+            error = 'Incorrect email.'
         elif not check_password_hash(user['password'], password):
             error = 'Incorrect password.'
 
@@ -125,9 +125,15 @@ def check_if_match_pattern(regex, obj):
     return True if re.fullmatch(regex, obj) else False
 
 
-def check_if_value_exist_in_db(key, value):
+def check_if_value_exist_in_db(db_value: str, form_value: str) -> bool:
+    """
+    Return true if db query returns a record, otherwise return False
+    :param db_value: repr. database table's column name
+    :param form_value: repr. the user form entry
+    :return: True or False
+    """
     db = get_db()
-    query = f"SELECT * FROM user WHERE {key}='{value}'"
+    query = f"SELECT * FROM user WHERE {db_value}='{form_value}'"
     result = db.execute(query).fetchone()
 
     return True if result is not None else False
