@@ -100,3 +100,7 @@ def delete(id):
     db.commit()
     return redirect(url_for('blog.index'))
 
+
+@bp.route('/profile')
+def profile():
+    return render_template('blog/profile.html')
