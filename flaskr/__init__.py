@@ -8,10 +8,12 @@ def create_app(test_config=None):
     # różnych środowisk (rozwój, testowanie, produkcja) poprzez wykorzystanie instancji konfiguracyjnych. Flask
     # będzie szukać plików konfiguracyjnych w folderze "instance" znajdującym się w katalogu głównym
     app = Flask(__name__, instance_relative_config=True)
+    app.app_context().push()
     app.config.from_mapping(
         SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'flaskr.sqlite'),
-        UPLOADED_PHOTOS_DESTINATION='uploads',
+        UPLOADED_PHOTOS_DEST='uploads',
+        INIT_DB='init-db'
     )
 
     if test_config is None:
@@ -27,13 +29,9 @@ def create_app(test_config=None):
     except OSError:
         pass
 
-    # route create a connection between th eURL  and function that returns a response
-    @app.route('/hello')
-    def hello():
-        return 'Hello, World!'
-
-    from . import db
+    from instance.db_connector import Connector
     # This function takes an application and does the registration.
+    db = Connector()
     db.init_app(app)
 
     from . import auth

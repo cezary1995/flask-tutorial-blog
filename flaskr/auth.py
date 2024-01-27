@@ -5,82 +5,46 @@ from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
 from werkzeug.security import check_password_hash, generate_password_hash
-
-from flaskr.db import get_db
-
+from flaskr.forms import RegistrationForm, LoginForm
+from flaskr.user import RegisterUser, LoginUser
+from instance.db_connector import Connector
 bp = Blueprint('auth', __name__, url_prefix='/auth')
-
-pattern_email = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
-pattern_pswd = r'^.{3,}$'
 
 
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
-    if request.method == 'POST':
-        name = request.form['name']
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        db = get_db()
-        error = None
-
-        # Check if all required fields are filled in
-        if not name:
-            error = 'name is required.'
-        elif not username:
-            error = 'Username is required.'
-        elif not email:
-            error = 'Email is required.'
-        elif not password:
-            error = 'Password is required.'
-
-        # Check if email and password match the pattern
-        if not check_if_match_pattern(pattern_email, email):
-            error = "Invalid email."
-        elif not check_if_match_pattern(pattern_pswd, password):
-            error = "Invalid password."
-
-        if error is None:
-            try:
-                db.execute(
-                    "INSERT INTO user (name, username, email, password) VALUES (?, ?, ?, ?)",
-                    (name, username, email, generate_password_hash(password)),
-                )
-                # commit() needs to be called to save the changes.
-                db.commit()
-            # Check if used email and username are already in db
-            except db.IntegrityError:
-                if check_if_value_exist_in_db('username', username):
-                    error = f"User {username} is already registered."
-                elif check_if_value_exist_in_db('email', email):
-                    error = f"Email {email} is already registered."
-            else:
-                return redirect(url_for("auth.login"))
-
+    form = RegistrationForm(request.form)
+    if request.method == 'POST' and form.validate():
+        user = RegisterUser(form.name.data, form.username.data, form.email.data, form.password.data, form.confirm.data)
+        db = Connector()
+        result = db.create_user(user.name, user.username, user.email, user.password)
+        if result == "Successfully registered":
+            return redirect(url_for("auth.login"))
+        else:
+            error = result
         flash(error)
-
-    return render_template('auth/register.html')
+    return render_template('auth/register_2.html', form=form)
 
 
 @bp.route('/login', methods=('GET', 'POST'))
 def login():
-    if request.method == 'POST':
-        email = request.form['email']
-        password = request.form['password']
-        db = get_db()
+    form = LoginForm(request.form)
+    if request.method == 'POST' and form.validate():
+        login_user = LoginUser(form.email.data, form.password.data)
+        db = Connector()
         error = None
-        user = db.execute(
-            'SELECT * FROM user WHERE email = ?', (email,)
-        ).fetchone()
-
-        if user is None:
+        user = db.sign_in_user(login_user.email)
+        print(user)
+        user_id = user['id']
+        user_pswd_hash = user['password']
+        if login_user.email is None:
             error = 'Incorrect email.'
-        elif not check_password_hash(user['password'], password):
+        elif not check_password_hash(user_pswd_hash, login_user.password):
             error = 'Incorrect password.'
 
         if error is None:
             session.clear()
-            session['user_id'] = user['id']
+            session['user_id'] = user_id
             return redirect(url_for('index'))
 
         flash(error)
@@ -89,16 +53,17 @@ def login():
 
 
 # before_app_request - registers a function that runs before the view function, no matter what URL is requested
-@bp.before_app_request
-def load_logged_in_user():
-    user_id = session.get('user_id')
-
-    if user_id is None:
-        g.user = None
-    else:
-        g.user = get_db().execute(
-            'SELECT * FROM user WHERE id = ?', (user_id,)
-        ).fetchone()
+# @bp.before_app_request
+# def load_logged_in_user():
+#     db = Connector()
+#     user_id = session.get('user_id')
+#
+#     if user_id is None:
+#         g.user = None
+#     else:
+#         g.user = db.execute(
+#             'SELECT * FROM user WHERE id = ?', (user_id,)
+#         ).fetchone()
 
 
 @bp.route('/logout')
@@ -121,21 +86,5 @@ def login_required(view):
     return wrapped_view
 
 
-def check_if_match_pattern(regex, obj):
-    return True if re.fullmatch(regex, obj) else False
-
-
-def check_if_value_exist_in_db(db_value: str, form_value: str) -> bool:
-    """
-    Return true if db query returns a record, otherwise return False
-    :param db_value: repr. database table's column name
-    :param form_value: repr. the user form entry
-    :return: True or False
-    """
-    db = get_db()
-    query = f"SELECT * FROM user WHERE {db_value}='{form_value}'"
-    result = db.execute(query).fetchone()
-
-    return True if result is not None else False
 
 
