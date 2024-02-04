@@ -1,16 +1,24 @@
 {% extends 'base.html' %}
 
 {% block header %}
-  <h1>{% block title %}New Post{% endblock %}</h1>
+    <div class="bg-white mb-2 p-2">
+  <h2>{% block title %}Create{% endblock %}</h2>
+    </div>
 {% endblock %}
 
 {% block content %}
-  <form method="post">
-    <label for="title">Title</label>
-    <input name="title" id="title" value="{{ request.form['title'] }}" required>
-    <label for="body">Body</label>
-    <textarea name="body" id="body">{{ request.form['body'] }}</textarea>
-      <input type="file" name="photo" id="upload-img">
-      <input type="submit" value="Save">
-  </form>
+    <div class="container mt-2">
+        <form class="row g-3" method="post" enctype="multipart/form-data">
+            <div class="col-sm-4">
+                <input class="form-control" name="title" id="title" placeholder="Title" value="{{ request.form['title'] }}" required>
+            </div>
+            <div class="col-sm-4">
+                    <textarea class="form-control" name="body" id="body" placeholder="Type here">{{ request.form['body'] }}</textarea>
+            </div>
+            <input type="file" class="form-control" name="photo" id="upload-img" accept=".jpg, .jpeg, .png">
+            <div class="col-md-12">
+                <button type="submit" class="btn btn-primary">Post</button>
+            </div>
+        </form>
+    </div>
 {% endblock %}
