@@ -1,8 +1,7 @@
-import sqlite3, os, json
-import hashlib, binascii, os
+import sqlite3
 import click
-from flask import current_app, g, flash
-from werkzeug.security import check_password_hash, generate_password_hash
+from flask import current_app, g
+from werkzeug.security import generate_password_hash
 from sys import argv
 import re
 
@@ -12,12 +11,11 @@ class Connector:
         self.db_name = current_app.config['DATABASE']
         self.conn = sqlite3.connect(self.db_name)
         self.cursor = self.conn.cursor()
-        self.get_g()
+        # Using this enables to use user['id'] instead of user[0]
+        self.user = self.get_object_g()
 
-    def __del__(self):
-        self.conn.close()
-
-    def get_g(self):
+    def get_object_g(self):
+        g.db = self.conn
         g.db.row_factory = sqlite3.Row
         return g.db
 
@@ -36,7 +34,6 @@ class Connector:
 
     def close_db(self, e=None):
         db = g.pop('db', None)
-        g.db.rowfactory = 'p'
 
         if db is not None:
             db.close()
@@ -48,7 +45,7 @@ class Connector:
         app.cli.add_command(self.init_db)
 
     def create_user(self, name: str, username: str, email: str, password: str,
-                 re_email=r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', re_pswd=r'^.{3,}$'):
+                    re_email=r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', re_pswd=r'^.{3,}$'):
         error = None
         if not self.check_if_match_pattern(re_email, email):
             error = "Invalid email."
@@ -67,10 +64,30 @@ class Connector:
                     error = f"{e}:Email {email} is already registered."
             return error if error is not None else "Successfully registered"
 
-    def sign_in_user(self, email: str,):
+    def sign_in_user(self, email: str, ):
         return self.conn.execute('SELECT * FROM user WHERE email = ?', (email,)).fetchone()
 
+    def get_posts(self):
+        result = self.conn.execute(
+            'SELECT p.id, title, body, created, author_id, username'
+            ' FROM post p JOIN user u ON p.author_id = u.id'
+            ' ORDER BY created DESC'
+        ).fetchall()
+        return result
 
+    def create_post(self, title, body, author_id):
+        self.conn.execute('INSERT INTO post (title, body, author_id)'
+                          ' VALUES (?, ?, ?)', (title, body, author_id))
+        self.conn.commit()
+
+    def update(self, title, body, id):
+        self.conn.execute('UPDATE post SET title = ?, body = ?'
+                          ' WHERE id = ?', (title, body, id))
+        self.conn.commit()
+
+    def delete(self, post_id):
+        self.conn.execute('DELETE FROM post WHERE id = ?', (post_id,))
+        self.conn.commit()
 
     def check_if_match_pattern(self, regex, obj):
         return True if re.fullmatch(regex, obj) else False

@@ -12,3 +12,15 @@ class LoginUser:
     def __init__(self, email, password):
         self.email = email
         self.password = password
+
+
+class CreatePost:
+    def __init__(self, title, body):
+        self.title = title
+        self.body = body
+
+
+class UpdatePost:
+    def __init__(self, title, body):
+        self.title = title
+        self.body = body
