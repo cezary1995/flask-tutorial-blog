@@ -24,3 +24,11 @@ class UpdatePost:
     def __init__(self, title, body):
         self.title = title
         self.body = body
+
+
+class UpdateUser:
+    def __init__(self, name, username, email):
+        self.name = name
+        self.username = username
+        self.email = email
+

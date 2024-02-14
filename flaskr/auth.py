@@ -5,9 +5,9 @@ from flask import (
 )
 from werkzeug.security import check_password_hash
 from flaskr.forms import RegistrationForm, LoginForm
-from flaskr.user import RegisterUser, LoginUser
+from flaskr.user import RegisterUser, LoginUser, UpdateUser
 from instance.db_connector import Connector
-
+from flaskr.forms import UpdateProfileForm
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
@@ -19,10 +19,11 @@ def register():
         db = Connector()
         result = db.create_user(user.name, user.username, user.email, user.password)
         if result == "Successfully registered":
+            flash(result, 'success')
             return redirect(url_for("auth.login"))
         else:
-            error = result
-        flash(error)
+            flash(result, 'danger')
+
     return render_template('auth/register.html', form=form)
 
 
@@ -84,5 +85,18 @@ def login_required(view):
     return wrapped_view
 
 
+@bp.route('/update_profile', methods=('GET', 'POST'))
+def update_profile():
+    form = UpdateProfileForm(request.form)
+    if request.method == 'POST' and form.validate():
+        update = UpdateUser(form.name.data, form.username.data, form.email.data)
 
+        db = Connector()
+        result = db.update_user_info(update.name, update.username, update.email, g.user['id'])
+        if result == "Your data has been updated successfully":
+            flash(result, 'success')
+            return redirect(url_for('blog.profile'))
+        else:
+            flash(result, 'error')
 
+    return render_template('blog/update_profile.html')

@@ -44,14 +44,16 @@ class Connector:
         # adds a new command that can be called with the flask command.
         app.cli.add_command(self.init_db)
 
-    def create_user(self, name: str, username: str, email: str, password: str,
-                    re_email=r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b', re_pswd=r'^.{3,}$'):
+    def create_user(self, name: str, username: str, email: str, password: str):
+        success_msg = "Successfully registered"
+        # Checking if email and password match pattern
         error = None
-        if not self.check_if_match_pattern(re_email, email):
+        if not self.check_if_match_pattern(self.get_email_pattern(), email):
             error = "Invalid email."
-        elif not self.check_if_match_pattern(re_pswd, password):
+        if not self.check_if_match_pattern(self.get_password_pattern(), password):
             error = "Invalid password."
         if error is None:
+            # Create new record in db
             try:
                 self.conn.execute("INSERT INTO user (name, username, email, password) VALUES (?, ?, ?, ?)",
                                   (name, username, email, generate_password_hash(password)))
@@ -59,10 +61,34 @@ class Connector:
             except self.conn.IntegrityError as e:
                 if self.check_if_value_exist_in_db('username', username):
                     error = f"{e}: User {username} is already registered."
-
                 elif self.check_if_value_exist_in_db('email', email):
                     error = f"{e}:Email {email} is already registered."
-            return error if error is not None else "Successfully registered"
+            return error if error is not None else success_msg
+
+    def update_user_info(self, name: str, username: str, email: str, id):
+        success_msg = "Your data has been updated successfully"
+        error = None
+        if not self.check_if_match_pattern(self.get_email_pattern(), email):
+            error = "Invalid email."
+        if error is None:
+            try:
+                self.conn.execute('UPDATE user SET name = ?, username = ?, email = ?'
+                                  ' WHERE id = ?', (name, username, email, id))
+                self.conn.commit()
+            except self.conn.IntegrityError as e:
+                if self.check_if_value_exist_in_db('username', username):
+                    error = f"User {username} is already registered."
+                elif self.check_if_value_exist_in_db('email', email):
+                    error = f"Email {email} is already registered."
+        return error if error is not None else success_msg
+
+    @staticmethod
+    def get_email_pattern():
+        return r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b'
+
+    @staticmethod
+    def get_password_pattern():
+        return r'^.{3,}$'
 
     def sign_in_user(self, email: str, ):
         return self.conn.execute('SELECT * FROM user WHERE email = ?', (email,)).fetchone()
@@ -80,7 +106,7 @@ class Connector:
                           ' VALUES (?, ?, ?)', (title, body, author_id))
         self.conn.commit()
 
-    def update(self, title, body, id):
+    def update_post(self, title, body, id):
         self.conn.execute('UPDATE post SET title = ?, body = ?'
                           ' WHERE id = ?', (title, body, id))
         self.conn.commit()
@@ -89,7 +115,8 @@ class Connector:
         self.conn.execute('DELETE FROM post WHERE id = ?', (post_id,))
         self.conn.commit()
 
-    def check_if_match_pattern(self, regex, obj):
+    @staticmethod
+    def check_if_match_pattern(regex, obj):
         return True if re.fullmatch(regex, obj) else False
 
     def check_if_value_exist_in_db(self, db_value: str, form_value: str) -> bool:
@@ -103,3 +130,8 @@ class Connector:
             result = con.execute(f"SELECT * FROM user WHERE {db_value}='{form_value}'").fetchone()
 
             return True if result is not None else False
+
+    def get_max_id_user(self):
+        max_id = self.conn.execute('SELECT MAX(id) FROM user').fetchone()[0]
+        return max_id
+

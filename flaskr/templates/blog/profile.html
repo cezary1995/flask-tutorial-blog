@@ -5,5 +5,27 @@
 {% endblock %}
 
 {% block content %}
-    <h1>content</h1>
+      <div class="container mt-2" >
+        <div class="row bg-white">
+            <div class="row col-sm-6 align-items-center justify-content-center">
+              <img src="{{ url_for('static', filename='img/border.jpg') }}" style="width: 200px; height: 200px; border-radius: 50%;">
+
+
+            </div>
+            <div class="col-sm-6">
+              <label for="name">Name</label>
+                <p id="ame">{{ g.user['name'] }}</p>
+                <label for="username">Username</label>
+                <p id="username">{{ g.user['username'] }}</p>
+                <label for="email">Email</label>
+                <p id="email">{{ g.user['email'] }}</p>
+                <label for="password">Password</label>
+                <p id="password" type="password">{{ g.user['password'] }}</p>
+            </div>
+            <div class="col">
+                <a class="action nav-link text-decoration-underline" href="{{ url_for('auth.update_profile', id=g.user['id'])}}">Edit</a>
+            </div>
+        </div>
+      </div>
 {% endblock %}
+{% block max_id %}{% endblock %}

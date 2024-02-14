@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block header %}
-    <div class="col-lg-4 bg-white mb-2 p-2">
+    <div class="col-sm-12 bg-white mb-2 p-2">
         <h1>{% block title %}Posts{% endblock %}</h1>
     </div>
   {% if g.user %}
@@ -55,3 +55,5 @@
       </div>
   </div>
 {% endblock %}
+{% from 'macro.html' import show_max_id %}
+{% block max_id %}{{ show_max_id(max_id) }}{% endblock %}

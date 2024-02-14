@@ -4,7 +4,7 @@ from flask import (
 from werkzeug.exceptions import abort
 from flask import current_app
 from flaskr.auth import login_required
-from flaskr.forms import CreateForm, UpdateForm
+from flaskr.forms import CreatePostForm, UpdatePostForm
 from instance.db_connector import Connector
 from flaskr.user import CreatePost, UpdatePost
 
@@ -15,8 +15,8 @@ bp = Blueprint('blog', __name__)
 def index():
     db = Connector()
     posts = db.get_posts()
-
-    return render_template('blog/index.html', posts=posts)
+    max_id = db.get_max_id_user()
+    return render_template('blog/index.html', posts=posts, max_id=max_id)
 
 
 @bp.route('/uploads/<filename>')
@@ -27,7 +27,7 @@ def get_file(filename):
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
 def create():
-    form = CreateForm(request.form)
+    form = CreatePostForm(request.form)
     if request.method == 'POST' and form.validate():
         post = CreatePost(form.title.data, form.body.data)
         img = request.files['photo']
@@ -52,9 +52,9 @@ def create():
 @login_required
 def update(id):
     post = get_post(id)
-    form = UpdateForm(request.form)
+    form = UpdatePostForm(request.form)
     if request.method == 'POST' and form.validate():
-        post_update = UpdatePost(form.title.data, form.body.data)
+        post_update = UpdatePostForm(form.title.data, form.body.data)
         error = None
         if not post_update.title:
             error = 'Title is required.'
@@ -63,7 +63,7 @@ def update(id):
             flash(error)
         else:
             db = Connector()
-            db.update(post_update.title, post_update.body, id)
+            db.update_post(post_update.title, post_update.body, id)
             return redirect(url_for('blog.index'))
 
     return render_template('blog/update.html', post=post)
